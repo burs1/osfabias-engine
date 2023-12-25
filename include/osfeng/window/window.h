@@ -3,20 +3,23 @@
 #include <map>
 #include <sdl.h>
 #include <string>
+#include "input.h"
 #include "sprite.h"
 #include <stdexcept>
 #include <sdl_ttf.h>
 #include <sdl_image.h>
 
-namespace osfeng::window {
-  enum class TYPE {
+namespace osfeng {
+  enum class WINDOWTYPE {
     WINDOWED,
     FULLSCREEN
   };
+}
 
+namespace osfeng::window {
   class Window {
   public:
-    explicit Window (const char* p_title="window", int p_width=1280, int p_height=720, TYPE p_type=TYPE::WINDOWED);
+    explicit Window (const char* p_title="window", int p_width=1280, int p_height=720, WINDOWTYPE p_type=WINDOWTYPE::WINDOWED);
 
     ~Window();
 
@@ -31,18 +34,13 @@ namespace osfeng::window {
 
     auto set_size(int, int)                         -> void;
 
-    auto set_type(TYPE)                             -> void;
+    auto set_type(WINDOWTYPE)                       -> void;
+
+    auto set_cursor_visibility(bool)                -> void;
+
+    auto set_cursor_position(int, int)              -> void;
 
     auto get_ticks()                                -> Uint32;
-
-    // ~ input
-    auto bind_key(const char*, const char*)         -> void;
-
-    auto input_check(const char*)                   -> bool;
-    
-    auto input_check_key(const char*)               -> bool;
-
-    auto get_mouse_pos(int&, int&)                  -> void;
 
     // ~ resources
     auto load_sprite(const char*, const char*)          -> void;
@@ -71,8 +69,14 @@ namespace osfeng::window {
     auto draw_sprite_ex(const char*, int, int, float, float, float, int, int)   -> void;
 
     // - vars -
+    // ~ read only
     const bool &isCloseRequested;
     const int &w, &h;
+
+    bool lockCursor = true;
+
+    // ~ components
+    InputManager input;
 
   private:
     // - internal methods -
@@ -83,24 +87,19 @@ namespace osfeng::window {
     // ~ info
     int _width, _height;
 
-    // vars
-    // ~ window
+    // ~ sdl & window
     SDL_Window *_window;
     SDL_Renderer *_renderer;
 
     bool _fullscreen;
     bool _isCloseRequested = false;
 
-    // ~ controlls
-    std::map< const char*, SDL_Scancode > _keyBinds;
-    const Uint8 *_inputs;
-
     // ~ drawing
     SDL_Color _clearColor = SDL_Color{0, 0, 0, 255};
     SDL_Color _drawColor = SDL_Color{255, 255, 255, 255};
 
     const char *_curfont = "";
-    
+
     // ~ resources
     std::map< const char*, window::Sprite* > _sprites;
     std::map< const char*, TTF_Font* > _fonts;

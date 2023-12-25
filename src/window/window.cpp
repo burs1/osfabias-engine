@@ -1,5 +1,6 @@
 #include "window.h"
 #include <SDL_keyboard.h>
+#include <SDL_mouse.h>
 #include <SDL_render.h>
 #include <SDL_video.h>
 
@@ -7,7 +8,7 @@ using namespace std;
 
 namespace osfeng::window {
   // ~ constructors and destructors
-  Window::Window (const char *p_title, int p_width, int p_height, TYPE p_type)
+  Window::Window (const char *p_title, int p_width, int p_height, WINDOWTYPE p_type)
     : isCloseRequested(_isCloseRequested), w(_width), h(_height) {
     _width = p_width;
     _height = p_height;
@@ -67,12 +68,13 @@ namespace osfeng::window {
   // - methods -
   // ~ main
   auto Window::update_events() -> void {
-    SDL_Event e;
-    while(SDL_PollEvent(&e)) {
-      if (e.type == SDL_QUIT) { _isCloseRequested = true; }
-    }
+    input._update();
 
-    _inputs = SDL_GetKeyboardState(NULL);
+    if (lockCursor) { set_cursor_position(_width / 2, _height / 2); }
+
+    SDL_Event e;
+    while(SDL_PollEvent(&e))
+      if (e.type == SDL_QUIT) { _isCloseRequested = true; }
   }
 
   auto Window::update_surface() -> void {
@@ -99,36 +101,29 @@ namespace osfeng::window {
     _height = height;
   }
 
-  auto Window::set_type(TYPE type) -> void {
+  auto Window::set_type(WINDOWTYPE type) -> void {
     switch (type) {
-      case TYPE::WINDOWED:
+      case WINDOWTYPE::WINDOWED:
         SDL_SetWindowFullscreen(_window, SDL_WINDOW_SHOWN);
         break;
-      case TYPE::FULLSCREEN:
+      case WINDOWTYPE::FULLSCREEN:
         SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN);
     }
+  }
+
+  auto Window::set_cursor_visibility(bool flag) -> void {
+    SDL_ShowCursor(flag ? SDL_ENABLE : SDL_DISABLE);
+  }
+
+
+  auto Window::set_cursor_position(int x, int y) -> void {
+    SDL_WarpMouseInWindow(_window, x, y);
   }
 
   auto Window::get_ticks() -> Uint32 {
     return SDL_GetTicks();
   }
 
-  // ~ input
-  auto Window::bind_key(const char *key, const char *bindName) -> void {
-    _keyBinds[bindName] = SDL_GetScancodeFromName(key);
-  }
-  
-  auto Window::input_check(const char *bindName) -> bool {
-    return _inputs[ _keyBinds[bindName] ];
-  }
-
-  auto Window::input_check_key(const char *key) -> bool {
-    return _inputs[ SDL_GetScancodeFromName(key) ];
-  }
-
-  auto Window::get_mouse_pos(int &x, int &y) -> void {
-    SDL_GetMouseState(&x, &y);
-  }
   
   // ~ resources
   auto Window::load_sprite(const char *path, const char *name) -> void {

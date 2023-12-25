@@ -1,5 +1,5 @@
 # ~ vars
-set(SOURCE_FILES window.cpp sprite.cpp)
+set(SOURCE_FILES window.cpp input.cpp sprite.cpp)
 
 # ~ find packages
 find_package(SDL2 REQUIRED)
