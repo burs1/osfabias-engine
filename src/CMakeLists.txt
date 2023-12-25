@@ -1,5 +1,6 @@
 # ~ add subdirs
 add_subdirectory(window)
+add_subdirectory(app)
 
 # ~ add target
 add_library(osfeng null.cpp)
@@ -13,5 +14,5 @@ target_include_directories(
 # ~ link libraries
 target_link_libraries(
   osfeng
-  PUBLIC window
+  PUBLIC app
 )
