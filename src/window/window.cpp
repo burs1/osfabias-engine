@@ -1,51 +1,27 @@
 #include "window.h"
-#include <SDL_keyboard.h>
+#include <SDL_events.h>
 #include <SDL_mouse.h>
-#include <SDL_render.h>
 #include <SDL_video.h>
+#include <stdexcept>
 
 using namespace std;
 
 namespace osfeng::window {
-  // ~ constructors and destructors
   Window::Window (const char *p_title, int p_width, int p_height, WINDOWTYPE p_type)
-    : isCloseRequested(_isCloseRequested), w(_width), h(_height) {
-    _width = p_width;
-    _height = p_height;
+    : _width(p_width),    width(_width),
+      _height(p_height),  height(_height),
+      _title(p_title),    title(_title),
+      isCloseRequested(_isCloseRequested) {
 
-    // Init SDL
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
-      throw runtime_error(SDL_GetError());
+    _init_sdl_modules();
 
-    // Init TTF
-    if (TTF_Init() < 0)
-      throw runtime_error(TTF_GetError());
-
-    // Init IMG
-    if (IMG_Init(IMG_INIT_PNG) < 0)
-      throw runtime_error(IMG_GetError());
-
-    // Create window
-    _window = SDL_CreateWindow(
-      p_title, 
-      SDL_WINDOWPOS_CENTERED, 
-      SDL_WINDOWPOS_CENTERED, 
-      _width, _height, 
-      SDL_WINDOW_SHOWN
-    );
-
-    if (_window == NULL)
-      throw runtime_error(SDL_GetError());
+    _create_window();
 
     set_type(p_type);
-    
-    // Create renderer
-    _renderer = SDL_CreateRenderer(
-      _window, -1, SDL_RENDERER_ACCELERATED
-    );
 
-    if (_renderer == NULL)
-      throw runtime_error(SDL_GetError());
+    _create_gl_context();
+
+    _init_glew();
   }
 
   Window::~Window() {
@@ -78,16 +54,7 @@ namespace osfeng::window {
   }
 
   auto Window::update_surface() -> void {
-    SDL_RenderPresent(_renderer);
-
-    // Clear renderer
-    auto [cr, cg, cb, ca] = _clearColor;
-    SDL_SetRenderDrawColor(_renderer, cr, cg, cb, ca);
-    SDL_RenderClear(_renderer);
-
-    // Set draw color back
-    auto [dr, dg, db, da] = _drawColor;
-    SDL_SetRenderDrawColor(_renderer, dr, dg, db, da);
+    gl_test();
   }
 
   // ~ window
@@ -111,11 +78,6 @@ namespace osfeng::window {
     }
   }
 
-  auto Window::set_cursor_visibility(bool flag) -> void {
-    SDL_ShowCursor(flag ? SDL_ENABLE : SDL_DISABLE);
-  }
-
-
   auto Window::set_cursor_position(int x, int y) -> void {
     SDL_WarpMouseInWindow(_window, x, y);
   }
@@ -124,7 +86,6 @@ namespace osfeng::window {
     return SDL_GetTicks();
   }
 
-  
   // ~ resources
   auto Window::load_sprite(const char *path, const char *name) -> void {
     // Check if sprite with such name alredy loaded
@@ -155,102 +116,75 @@ namespace osfeng::window {
   }
 
   // ~ draw
-  auto Window::set_clear_color(Uint8 r, Uint8 g, Uint8 b) -> void {
-    _clearColor = SDL_Color{r, g, b, 255};
-  }
-  
-  auto Window::set_draw_color(Uint8 r, Uint8 g, Uint8 b, Uint8 a) -> void {
-    SDL_SetRenderDrawColor(_renderer, r, g, b, a);
-    _drawColor = SDL_Color{r, g, b, a};
-  }
-  
-  auto Window::draw_line(int x1, int y1, int x2, int y2) -> void {
-    SDL_RenderDrawLine(_renderer, x1, y1, x2, y2);
-  }
+  auto Window::gl_test() -> void {
+    glClearDepth(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  auto Window::draw_triangle(int x1, int y1, int x2, int y2, int x3, int y3, bool fill) -> void {
-    if (not fill) {
-      draw_line(x1, y1, x2, y2);
-      draw_line(x2, y2, x3, y3);
-      draw_line(x3, y3, x1, y1);
-      return;
-    }
+    glBegin(GL_TRIANGLES);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex2f(-1.0f, -1.0f);
+    glVertex2f(-1.0f, 1.0f);
+    glVertex2f(0.0f, 0.0f);
+    glEnd();
 
-    SDL_Vertex verts[] = {
-      {{(float)x1, (float)y1}, _drawColor},
-      {{(float)x2, (float)y2}, _drawColor},
-      {{(float)x3, (float)y3}, _drawColor}
-    };
-    SDL_RenderGeometry(_renderer, NULL, verts, 3, NULL, 0);
+    SDL_GL_SwapWindow(_window);
   }
 
-  auto Window::draw_rect(int x1, int y1, int x2, int y2, bool fill) -> void {
-    if (not fill) {
-      draw_line(x1, y1, x2, y1);
-      draw_line(x2, y1, x2, y2);
-      draw_line(x2, y2, x1, y2);
-      draw_line(x1, y2, x1, y1);
-      return;
-    }
-
-    SDL_Rect draw_rect{x1, y1, x2-x1, y2-y1};
-    SDL_RenderDrawRect(_renderer, &draw_rect);
-  }
-
-  auto Window::set_font(const char* fontname) -> void {
-    _curfont = fontname;
-  }
-
-  auto Window::draw_text(const char* text, int x, int y) -> void {
-    SDL_Rect txtr_rect{0, 0};
-    SDL_Texture *texture = _render_text(text, &txtr_rect);
-
-    SDL_Rect draw_rect{
-      x, y,
-      txtr_rect.w,
-      txtr_rect.h
-    };
-
-    if (SDL_RenderCopy(_renderer, texture, &txtr_rect, &draw_rect) < 0)
-      throw runtime_error(SDL_GetError());
-
-    SDL_DestroyTexture(texture);
-  }
- 
-  auto Window::draw_text_ex(const char* text, int x, int y, float xscale, float yscale, float angle) -> void {
-    SDL_Rect txtr_rect{0, 0};
-    SDL_Point center{0, 0};
-    SDL_Texture *texture = _render_text(text, &txtr_rect);
-
-    SDL_Rect draw_rect{
-      x, y,
-      int(txtr_rect.w * xscale),
-      int(txtr_rect.h * yscale)
-    };
-
-    if (SDL_RenderCopyEx(_renderer, texture, &txtr_rect, &draw_rect, angle, &center, SDL_FLIP_NONE) < 0)
-      throw runtime_error(SDL_GetError());
-    SDL_DestroyTexture(texture);
-  }
- 
-  auto Window::draw_sprite(const char* sprname, int x, int y) -> void {
-    Sprite *spr = _sprites[sprname];
-    SDL_Rect draw_rect{x, y, spr->w, spr->h};
-
-    if (SDL_RenderCopy(_renderer, spr->texture, &spr->rect, &draw_rect) < 0)
-      throw runtime_error( SDL_GetError() );
-  }
-
-  auto Window::draw_sprite_ex(const char* sprname, int x, int y, float xscale, float yscale, float angle, int xcent, int ycent) -> void {
-    Sprite *spr = _sprites[sprname];
-    SDL_Rect draw_rect{x, y, int(spr->w * xscale), int(spr->h * yscale)};
-    SDL_Point center{xcent, ycent};
-
-    if (SDL_RenderCopyEx(_renderer, spr->texture, &spr->rect, &draw_rect, angle, &center, SDL_FLIP_NONE) < 0)
-      throw runtime_error( SDL_GetError() );
+  auto Window::set_clear_color(float r, float g, float b) -> void {
+    glClearColor(r, g, b, 1.0f);
   }
 
   // internal methods
+  // ~ init
+  auto Window::_init_sdl_modules()  -> void {
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+      throw runtime_error(SDL_GetError());
+
+    if (TTF_Init() < 0)
+      throw runtime_error(TTF_GetError());
+
+    if (IMG_Init(IMG_INIT_PNG) < 0)
+      throw runtime_error(IMG_GetError());
+  }
+
+  auto Window::_init_glew() -> void {
+    if (glewInit() != GLEW_OK)
+      throw runtime_error("Could not initialize glew.");
+
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+  }
+
+  auto Window::_create_window() -> void {
+    _window = SDL_CreateWindow(
+      _title, 
+      SDL_WINDOWPOS_CENTERED, 
+      SDL_WINDOWPOS_CENTERED, 
+      _width, _height, 
+      SDL_WINDOW_SHOWN
+    );
+
+    if (_window == NULL)
+      throw runtime_error(SDL_GetError());
+  }
+
+  auto Window::_create_gl_context() -> void {
+    _glContext = SDL_GL_CreateContext(_window);
+
+    if (_glContext == NULL)
+      throw runtime_error(SDL_GetError());
+  }
+
+  auto Window::_create_renderer()   -> void {
+    _renderer = SDL_CreateRenderer(
+      _window, -1, SDL_RENDERER_ACCELERATED
+    );
+
+    if (_renderer == NULL)
+      throw runtime_error(SDL_GetError());
+  }
+
   // ~ draw
   auto Window::_render_text(const char *text, SDL_Rect *rect) -> SDL_Texture* {
     SDL_Surface *textsurf = TTF_RenderText_Solid(_fonts[_curfont], text, _drawColor);

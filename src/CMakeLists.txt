@@ -1,5 +1,6 @@
 # ~ add subdirs
 add_subdirectory(window)
+add_subdirectory(math)
 add_subdirectory(app)
 
 # ~ add target

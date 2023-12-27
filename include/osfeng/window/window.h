@@ -7,6 +7,7 @@
 #include "sprite.h"
 #include <stdexcept>
 #include <sdl_ttf.h>
+#include <GL/glew.h>
 #include <sdl_image.h>
 
 namespace osfeng {
@@ -36,8 +37,6 @@ namespace osfeng::window {
 
     auto set_type(WINDOWTYPE)                       -> void;
 
-    auto set_cursor_visibility(bool)                -> void;
-
     auto set_cursor_position(int, int)              -> void;
 
     auto get_ticks()                                -> Uint32;
@@ -48,30 +47,15 @@ namespace osfeng::window {
     auto load_font(const char*, int size, const char*)  -> void;
 
     // ~ draw
-    auto set_clear_color(Uint8, Uint8, Uint8)                                   -> void;
-
-    auto set_draw_color(Uint8, Uint8, Uint8, Uint8)                             -> void;
-
-    auto draw_line(int, int, int, int)                                          -> void;
-
-    auto draw_triangle(int, int, int, int, int, int, bool fill=true)            -> void;
-
-    auto draw_rect(int, int, int, int, bool fill=true)                          -> void;
+    auto gl_test() -> void;
     
-    auto set_font(const char*)                                                  -> void;
-
-    auto draw_text(const char*, int, int)                                       -> void;
-
-    auto draw_text_ex(const char*, int, int, float, float, float)               -> void;
-     
-    auto draw_sprite(const char*, int, int)                                     -> void;
-    
-    auto draw_sprite_ex(const char*, int, int, float, float, float, int, int)   -> void;
+    auto set_clear_color(float, float, float)                                   -> void;
 
     // - vars -
     // ~ read only
     const bool &isCloseRequested;
-    const int &w, &h;
+    const int &width, &height;
+    const char* &title;
 
     bool lockCursor = true;
 
@@ -80,16 +64,30 @@ namespace osfeng::window {
 
   private:
     // - internal methods -
+    // ~ init
+    auto _init_sdl_modules()  -> void;
+
+    auto _init_glew()         -> void;
+
+    auto _create_window()     -> void;
+
+    auto _create_gl_context() -> void;
+
+    auto _create_renderer()   -> void;
+
     // ~ rendering
     auto _render_text(const char*, SDL_Rect*) -> SDL_Texture*;
 
     // - vars -
-    // ~ info
+    // ~ window info
     int _width, _height;
+    const char *_title;
 
-    // ~ sdl & window
+    // ~ sdl, opengl & window
     SDL_Window *_window;
     SDL_Renderer *_renderer;
+
+    SDL_GLContext _glContext;
 
     bool _fullscreen;
     bool _isCloseRequested = false;

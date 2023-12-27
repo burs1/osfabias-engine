@@ -9,7 +9,7 @@ namespace osfeng {
 
     set_refresh_rate(refresh_rate);
 
-    on_create();
+    on_init();
   }
 
   auto App::set_refresh_rate(int refresh_rate) -> void {

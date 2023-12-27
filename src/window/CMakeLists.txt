@@ -5,6 +5,7 @@ set(SOURCE_FILES window.cpp input.cpp sprite.cpp)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 find_package(SDL2_image REQUIRED)
+find_package(GLEW REQUIRED)
 
 # ~ add building target
 add_library(window ${SOURCE_FILES})
@@ -21,4 +22,5 @@ target_link_libraries(
   PUBLIC SDL2::SDL2
   PUBLIC SDL2_ttf::SDL2_ttf
   PUBLIC SDL2_image::SDL2_image
+  PUBLIC GLEW::GLEW
 )

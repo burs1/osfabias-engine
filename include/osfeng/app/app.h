@@ -25,7 +25,7 @@ namespace osfeng {
     auto _clean_up()       -> void;
 
     // ~ events
-    virtual auto on_create()       -> void {}
+    virtual auto on_init()         -> void {}
 
     virtual auto on_update_start() -> void {}
     
